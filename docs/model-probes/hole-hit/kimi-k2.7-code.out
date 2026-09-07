@@ -1,0 +1,16 @@
+def hole_hit(px, py, r, holes):
+    """Return the index of the first hole that overlaps the marble.
+    The marble is centered at (px, py) with radius r; each hole is
+    an (x, y, radius) tuple.  Return -1 if no hole overlaps."""
+    for i, hole in enumerate(holes):
+        hx, hy, hr = hole
+        dx = px - hx
+        dy = py - hy
+        if dx * dx + dy * dy <= (r + hr) * (r + hr):
+            return i
+    return -1
+
+
+real	0m11.654s
+user	0m3.070s
+sys	0m0.476s

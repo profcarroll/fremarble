@@ -1,0 +1,21 @@
+def hole_hit(px, py, r, holes):
+    """Return the first overlapping hole index.
+    Holes are checked in order from left to right in the list.
+    Return -1 when the marble does not overlap any hole.
+    """
+    i = 0
+    rr = r * r
+    while i < len(holes):
+        hx, hy, hr = holes[i]
+        dx = px - hx
+        dy = py - hy
+        sr = r + hr
+        if dx * dx + dy * dy <= sr * sr:
+            return i
+        i += 1
+    return -1
+
+
+real	0m7.805s
+user	0m1.626s
+sys	0m0.179s

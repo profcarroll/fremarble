@@ -1,0 +1,18 @@
+def hole_hit(px, py, r, holes):
+    """
+    Check each hole for overlap with the marble.
+    Return the index of the first matching hole.
+    A touch or intersection counts as a hit.
+    """
+    for i, hole in enumerate(holes):
+        hx, hy, hr = hole
+        dx = px - hx
+        dy = py - hy
+        if dx * dx + dy * dy <= (r + hr) * (r + hr):
+            return i
+    return -1
+
+
+real	0m9.211s
+user	0m1.400s
+sys	0m0.132s

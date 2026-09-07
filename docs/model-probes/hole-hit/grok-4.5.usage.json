@@ -1,0 +1,87 @@
+{
+  "totalPremiumRequestCost": 1,
+  "totalUserRequests": 1,
+  "totalNanoAiu": 3907600000,
+  "tokenDetails": {
+    "input": {
+      "tokenCount": 18164
+    },
+    "cache_read": {
+      "tokenCount": 0
+    },
+    "output": {
+      "tokenCount": 458
+    }
+  },
+  "totalApiDurationMs": 8830,
+  "sessionStartTime": "2026-09-07T19:35:39.588Z",
+  "codeChanges": {
+    "linesAdded": 0,
+    "linesRemoved": 0,
+    "filesModifiedCount": 0,
+    "filesModified": []
+  },
+  "modelMetrics": {
+    "grok-4.5": {
+      "requests": {
+        "count": 1,
+        "cost": 1
+      },
+      "usage": {
+        "inputTokens": 18164,
+        "outputTokens": 458,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 321
+      },
+      "totalNanoAiu": 3907600000,
+      "tokenDetails": {
+        "input": {
+          "tokenCount": 18164
+        },
+        "cache_read": {
+          "tokenCount": 0
+        },
+        "output": {
+          "tokenCount": 458
+        }
+      }
+    }
+  },
+  "agentMetrics": {
+    "main": {
+      "totalApiDurationMs": 8830,
+      "totalNanoAiu": 3907600000,
+      "modelMetrics": {
+        "grok-4.5": {
+          "requests": {
+            "count": 1,
+            "cost": 1
+          },
+          "usage": {
+            "inputTokens": 18164,
+            "outputTokens": 458,
+            "cacheReadTokens": 0,
+            "cacheWriteTokens": 0,
+            "reasoningTokens": 321
+          },
+          "totalNanoAiu": 3907600000,
+          "tokenDetails": {
+            "input": {
+              "tokenCount": 18164
+            },
+            "cache_read": {
+              "tokenCount": 0
+            },
+            "output": {
+              "tokenCount": 458
+            }
+          }
+        }
+      }
+    }
+  },
+  "currentModel": "grok-4.5",
+  "lastCallInputTokens": 18164,
+  "lastCallOutputTokens": 458
+}

@@ -1,0 +1,21 @@
+def hole_hit(px, py, r, holes):
+    """Return index of first hole overlapping the marble.
+    Overlap occurs when the distance between centers is less
+    than the sum of the marble radius and hole radius.
+    """
+    i = 0
+    while i < len(holes):
+        hx, hy, hr = holes[i]
+        dx = px - hx
+        dy = py - hy
+        dist2 = dx * dx + dy * dy
+        rad_sum = r + hr
+        if dist2 < rad_sum * rad_sum:
+            return i
+        i += 1
+    return -1
+
+
+real	0m6.099s
+user	0m1.302s
+sys	0m0.122s
