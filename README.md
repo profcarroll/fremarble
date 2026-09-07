@@ -30,14 +30,32 @@ studies. The design dossier, with every measurement behind these choices, is
 [`docs/fremantle-calling.html`](docs/fremantle-calling.html) (also published as a Claude
 artifact, "Fremantle Calling").
 
-## Running it on the N900
+## Deploying and running on the N900
 
 Prerequisites on the device (see the dossier for the full trail): `python2.5` and
 `python-pygame` from the archival Extras catalogue, plus `libsdl-ttf2.0` from Nokia's own
 "apps" catalogue, which the Extras index does not carry. Everything installs to `/opt`.
 
+From the laptop, deploy just the files that run on the N900. The script defaults to the
+usual device address and destination, both of which can be overridden:
+
 ```
-scp -r . root@<n900-ip>:/home/user/MyDocs/fremarble
+sh tools/deploy.sh
+N900_HOST=root@<n900-ip> sh tools/deploy.sh
+```
+
+The first deployment, and any change under `desktop/`, also needs the one-time
+device-side launcher installation:
+
+```
+ssh root@<n900-ip> 'sh /home/user/MyDocs/fremarble/desktop/install.sh'
+```
+
+`fremarble` will then appear under **Games** in the Hildon app grid and launch level 001.
+The launcher writes output to `/home/user/MyDocs/fremarble/fremarble.log`. To run it
+directly instead:
+
+```
 ssh root@<n900-ip>
 cd /home/user/MyDocs/fremarble
 export DISPLAY=:0
@@ -76,6 +94,8 @@ Taking the grab drops play to about 8 fps while it runs, so grab between levels.
 | `telemetry.py` | 10 Hz CSV writer | GPT-5.4 mini |
 | `bot_tilt.py` | scripted tilt writer | GPT-5.4 mini |
 | `tools/marble_fps.py` | the frame-rate test that decided Python was fast enough | Claude Fable 5.1 |
+| `tools/deploy.sh` | selective laptop-to-N900 deployment | Copilot |
+| `desktop/` | Hildon app-grid launcher and its device-side installer | Copilot |
 | `telemetry/` | every run so far, bot and human | the device |
 | `docs/TASK*.md`, `docs/BUG-001.md` | the specs the models were given | Claude Fable 5.1 |
 | `docs/model-probes/` | raw model outputs, usage files, the seven-model comparison | the models |
