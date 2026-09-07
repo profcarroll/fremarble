@@ -1,3 +1,5 @@
+=== FILE: game.py
+```python
 import os, re, sys, time
 import pygame
 import level
@@ -295,3 +297,9 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+```
+
+
+real	1m11.288s
+user	0m9.672s
+sys	0m2.184s
