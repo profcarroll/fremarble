@@ -58,11 +58,13 @@ write it:
 ```
 echo "0 0 -1000" > /tmp/tilt
 python2.5 game.py levels/001-first-tilt.lvl /tmp/tilt telemetry/bot.csv 30 &
-python2.5 bot_tilt.py /tmp/tilt "0,-300,-800:3;-300,150,-800:3;-150,-300,-800:3;100,150,-800:1.5;0,0,-1000:3"
+python2.5 bot_tilt.py /tmp/tilt "0,0,-1000:3;-300,0,-800:3;150,-300,-800:3;-300,-150,-800:3;150,100,-800:1.5;0,0,-1000:3"
 ```
 
-Each script segment is `x,y,z:seconds` in milli-g, rewritten every 100 ms. That script
-reaches the goal of level 001 in about 11 s. To see the screen from the laptop:
+Each script segment is `x,y,z:seconds` in milli-g, rewritten every 100 ms, in the device's own
+axes: x runs along the long side of the screen (x = -300 rolls the marble right), y along the
+short side (y = -300 rolls it down). The first segment holds the device level while the game
+calibrates. That script reaches the goal of level 001 in about 12 s. To see the screen from the laptop:
 `cat /dev/fb0 > fb.raw` on the device (RGB565, 4096-byte stride, 480 rows), then convert.
 Taking the grab drops play to about 8 fps while it runs, so grab between levels.
 
@@ -76,20 +78,27 @@ Taking the grab drops play to about 8 fps while it runs, so grab between levels.
 | `telemetry.py` | 10 Hz CSV writer | GPT-5.4 mini |
 | `bot_tilt.py` | scripted tilt writer | GPT-5.4 mini |
 | `tools/marble_fps.py` | the frame-rate test that decided Python was fast enough | Claude Fable 5.1 |
+| `tools/tilt_axes.py` | prints which way the marble would roll from the live sensor | Claude Fable 5.1 |
 | `telemetry/` | every run so far, bot and human | the device |
-| `docs/TASK*.md`, `docs/BUG-001.md` | the specs the models were given | Claude Fable 5.1 |
+| `docs/TASK*.md`, `docs/BUG-00*.md` | the specs the models were given, and the two bug reports | Claude Fable 5.1 |
 | `docs/model-probes/` | raw model outputs, usage files, the seven-model comparison | the models |
 | `.github/copilot-instructions.md` | the Python 2.5 bootstrap every model gets | Claude Fable 5.1 |
 
 ## Known behaviour
 
-- **A human has not finished level 001.** Play-test 1 (old physics): 120 s, 7 deaths. Play-test 2
-  (tuned physics, calibration, haptics): ended by a screen touch at 9 s, no deaths, never left the
-  first corridor, tilts still averaging 300 mg. Whether the feel is now right is an open question
-  for the next session with the player.
+- **A human has not finished level 001, and until 2026-09-07 could not have.** The accelerometer
+  axes were transposed (BUG-002): a left/right tilt moved the marble up/down. Play-test 1 (old
+  physics): 120 s, 7 deaths. Play-tests 2 to 6 (tuned physics): every one ended by a screen touch
+  inside the first corridor, and in every one the player's left/right tilt pointed the way the
+  marble should have gone and did not. The mapping is fixed; the feel with correct axes is untested
+  by a hand. Run `python2.5 tools/tilt_axes.py` over SSH and tilt: it must say RIGHT when the right
+  edge goes down and DOWN when the bottom edge does.
 - **Physics were tuned once**, from telemetry, not from a hand on the device: 1.2 px/s² per
-  milli-g, 0.8/s drag, 900 px/s cap, 0.3 wall restitution, 40 mg dead zone, 3-sample smoothing.
-  All constants are at the top of `game.py`.
+  milli-g, 0.8/s drag, 900 px/s cap, 0.3 wall restitution, 40 mg soft dead zone (subtracted, not
+  stepped), 3-sample smoothing. All constants are at the top of `game.py`.
+- **The bot must hold the device level for the first half second.** The game averages the first
+  0.5 s of tilt as "level"; pygame takes over a second to start on the device, so a script that
+  begins tilting at once gets its first segment calibrated away. Lead with `0,0,-1000:3`.
 - **Holes swallow the marble's centre**, not its edge. Walls buzz the vibrator on hard hits.
 - **Empty-string arguments are taken literally.** Pass a real path or omit the argument.
 - **The device's clock is wrong** (it thinks it is 2009), so default telemetry filenames carry

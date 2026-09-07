@@ -51,11 +51,23 @@ plus ~18 credits for the seven-model probe.
    zone, smoothing, 0.3 restitution, centre-capture holes, vibrator haptics. Bot run 5: goal in 10.8 s.
 8. Human play-test 2: quit by touch at 9 s, no deaths, stayed in the corridor. Verdict pending.
 
+## Session 2 addendum (2026-09-07, tuning session)
+
+The controls were not "tricky", they were transposed: device x (long side of the screen) was
+driving screen y and device y screen x. Found from the N900 accelerometer table on the Maemo
+wiki, confirmed by five human runs in which the player's left/right tilt pointed the right way
+in under 20% of samples under the old mapping. Fixed in `game.py` and `tools/marble_fps.py`;
+written up in `docs/BUG-002.md`; `tools/tilt_axes.py` lets the next hand confirm direction in
+ten seconds. The dead zone is now soft. Bot run 6 (`telemetry/run6.csv`) clears the level with
+the x/y-swapped script. Play-tests 3 to 6 were pulled off the device into `telemetry/human3..6.csv`.
+The device is reachable from the laptop through the `n900` shim and the assistant carried the
+files over SSH, as the rule below allows.
+
 ## Next steps, in order
 
-1. **Ask the player** how play-test 2 felt before touching the constants again. The telemetry
-   (`telemetry/human2.csv`) shows tilts still averaging 300 mg; that is either habit from the
-   first session or the gain is still low. Only the hand knows.
+1. **Hand on the device, axes first.** `python2.5 tools/tilt_axes.py` over SSH, tilt each way,
+   read RIGHT/LEFT/DOWN/UP. Then play. Only then judge gain, drag and dead zone: every human
+   number so far was recorded with the axes crossed and says nothing about feel.
 2. **Get a human to finish level 001.** Until then no level is "good" and the designer has no
    target.
 3. **Ask the node's qwen3-coder for a level** in the `.lvl` format, from a prompt built out of

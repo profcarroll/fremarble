@@ -46,8 +46,10 @@ while running and time.time() - t0 < SECONDS:
         if e.type == pygame.QUIT or e.type == pygame.KEYDOWN or e.type == pygame.MOUSEBUTTONDOWN:
             running = False
     a0 = time.time(); ax, ay, az = read_tilt(); aread = (time.time() - a0) * 1000.0
-    # Landscape N900: device x axis maps to screen y, y axis to screen x (sign found by trying).
-    vx += -ay * GAIN; vy += -ax * GAIN
+    # Landscape N900: device x runs along the long side, y along the short side; the
+    # marble rolls toward the low edge (right edge down -> x=-1000, bottom edge down -> y=-1000).
+    # The original version of this line had the axes transposed (BUG-002).
+    vx += -ax * GAIN; vy += -ay * GAIN
     vx *= FRICTION; vy *= FRICTION
     nx, ny = px + vx, py + vy
     ball = pygame.Rect(int(nx - R), int(ny - R), 2 * R, 2 * R)
