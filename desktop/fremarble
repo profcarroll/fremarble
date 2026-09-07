@@ -1,0 +1,9 @@
+#!/bin/sh
+# Maemo/Hildon desktop launcher for fremarble. Installed as /usr/bin/fremarble
+# by desktop/install.sh; the app-grid entry has no arguments, so start the
+# bundled first level explicitly.
+set -e
+GAMEDIR=/home/user/MyDocs/fremarble
+LOG="$GAMEDIR/fremarble.log"
+cd "$GAMEDIR"
+exec python2.5 game.py levels/001-first-tilt.lvl >>"$LOG" 2>&1
