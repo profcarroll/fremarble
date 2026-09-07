@@ -1,0 +1,298 @@
+<title>Fremantle Calling</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#EEF0F3; --panel:#FFFFFF; --ink:#1B1F24; --muted:#5B6570; --line:#CDD3DA;
+  --accent:#1F6F8B; --accent-ink:#FFFFFF; --measure:#9A6510; --measure-bg:#FBF3E4;
+  --warn:#8C2F2F; --warn-bg:#F8E9E9;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14171B; --panel:#1D2126; --ink:#E6E9EE; --muted:#9AA5B1; --line:#343B44;
+    --accent:#5FB3D1; --accent-ink:#0E1418; --measure:#E2B265; --measure-bg:#2A2419;
+    --warn:#E38A8A; --warn-bg:#2E1E1E;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14171B; --panel:#1D2126; --ink:#E6E9EE; --muted:#9AA5B1; --line:#343B44;
+  --accent:#5FB3D1; --accent-ink:#0E1418; --measure:#E2B265; --measure-bg:#2A2419;
+  --warn:#E38A8A; --warn-bg:#2E1E1E;
+}
+body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.55;margin:0}
+.page{max-width:900px;margin:0 auto;padding:40px 24px 80px}
+h1,h2,h3{font-family:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;font-weight:600;text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:44px;letter-spacing:-0.01em}
+h2{font-size:26px;margin-top:56px;padding-top:16px;border-top:2px solid var(--ink)}
+h3{font-size:20px}
+p{max-width:66ch;margin:12px 0}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:19px;color:var(--ink);max-width:62ch}
+header{display:grid;gap:10px;margin-bottom:8px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 24px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px;color:var(--muted);margin-top:8px}
+.probe{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;margin-top:20px}
+.machine{background:var(--panel);border:1px solid var(--line);padding:18px 20px}
+.machine h3{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.machine h3 small{font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:400;font-size:12px;color:var(--muted)}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:14px 0 0;font-size:14.5px}
+dt{color:var(--muted)}
+dd{margin:0;font-variant-numeric:tabular-nums}
+.m{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13.5px;color:var(--measure);background:var(--measure-bg);padding:0 5px;border-radius:2px}
+.have,.lack{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px}
+.lack{color:var(--warn)}
+.note{border-left:3px solid var(--accent);padding:10px 16px;margin:20px 0;background:var(--panel)}
+.note p{margin:6px 0}
+.ranked{counter-reset:pick;display:grid;gap:28px;margin-top:20px}
+.pick{background:var(--panel);border:1px solid var(--line);padding:22px 24px;display:grid;grid-template-columns:64px 1fr;gap:6px 20px}
+.pick::before{counter-increment:pick;content:counter(pick);font-family:"IBM Plex Sans Condensed",sans-serif;font-size:44px;font-weight:600;color:var(--accent);line-height:1;grid-row:1/span 6}
+.pick .tags{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}
+.tag{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);padding:2px 8px;color:var(--muted)}
+.tag.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pick p{max-width:70ch}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+.cols h4{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:500}
+.cols ul{margin:0;padding-left:18px;font-size:14.5px}
+.cols li{margin:4px 0}
+.ask{margin-top:10px;font-size:14.5px;padding:10px 14px;background:var(--bg);border:1px dashed var(--line)}
+.ask strong{color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin-top:16px;font-variant-numeric:tabular-nums}
+.tw{overflow-x:auto}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.92em}
+pre{background:var(--panel);border:1px solid var(--line);padding:12px 14px;overflow-x:auto;font-size:13px;line-height:1.5}
+ol.steps{padding-left:22px;max-width:70ch}
+ol.steps li{margin:8px 0}
+footer{margin-top:64px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+@media (max-width:600px){.pick{grid-template-columns:1fr}.pick::before{grid-row:auto;font-size:32px}.cols{grid-template-columns:1fr}h1{font-size:34px}}
+</style>
+
+<div class="page">
+<header>
+  <div class="eyebrow">PSAM 5600 B · Project proposal draft · for faculty feedback</div>
+  <h1>Fremantle Calling</h1>
+  <p class="lede">A 2009 Nokia N900 with 245&nbsp;MB of RAM cannot run a language model. It can be the hand, the screen, the keyboard, the camera, and the radio for one running on my free Ampere node. Four ways to build that, ranked by how much I believe I can finish by December 9.</p>
+  <div class="meta"><span>student: (me) · model: Claude Fable 5.1</span><span>probed: 2026-09-07</span><span>status: human play-tested</span></div>
+</header>
+
+<div class="note" style="border-left-color:var(--measure)">
+  <p><strong>Decision after faculty feedback, 2026-09-07: proposal 2, Tilt Levels.</strong> It carries a real question (does the model design better levels by studying how they are played, and what do those levels look like?), runs offline from day one, and inherits the Marble Madness vocabulary as a design language for the prompt. From proposal 1 it borrows the autonomy trick: tilt comes from one input source that can be the accelerometer or a named pipe, so a bot driven over SSH can play every level pack headlessly while a human operator plays the real thing. The gap between bot telemetry and human telemetry is part of the finding.</p>
+  <p><strong>Model plan:</strong> the level designer is qwen3-coder:30b-a3b on sld-cloud in overnight batch (the self-hosted outcome, and the thing under study). Gemini Pro drafts the pygame client and the tilt harness; Copilot covers editor completion, commit messages and PR review; Claude is rationed to direction, bootstrap and harness files, and hard debugging. Each commit's trailer names the model that wrote it.</p>
+  <p><strong>Plan changes:</strong> milestone zero shrinks to an scp of a JSON level pack over the legacy SSH shim; the live relay and firewall decision wait until telemetry upload needs them. The on-device pygame frame-rate test moves to the first week, because a failing number sends the client to proposal 4's C toolchain before the midterm pitch.</p>
+</div>
+
+<h2>What I actually have, measured today</h2>
+<p>Before proposing anything I logged into both machines and asked. Numbers marked <span class="m">like this</span> came off the hardware this afternoon; nothing here is quoted from a forum.</p>
+
+<div class="probe">
+  <div class="machine">
+    <h3>sld-cloud <small>Oracle Ampere A1 · Ubuntu 24.04 aarch64</small></h3>
+    <dl>
+      <dt>CPU / RAM</dt><dd>4× Neoverse-N1, <span class="m">23 GiB</span>, no GPU, no swap</dd>
+      <dt>Disk</dt><dd><span class="m">74 GB free</span> of 140</dd>
+      <dt>Serving</dt><dd>Ollama 0.33.2, 10 models pulled, one loaded at a time, context <span class="m">8192</span></dd>
+      <dt>Front end</dt><dd>Open WebUI on :3000, reachable only through an SSH tunnel (firewall passes TCP 22 only)</dd>
+      <dt>qwen3.5:0.8b</dt><dd><span class="m">39.4 tok/s</span>, 14.6 s cold load</dd>
+      <dt>qwen2.5-coder:7b</dt><dd><span class="m">7.3 tok/s</span>, 66 s cold load</dd>
+      <dt>qwen3-coder:30b-a3b</dt><dd>14.0 tok/s short prompts (course runbook, 2026-09-06)</dd>
+      <dt>Also there</dt><dd>gemma4:e4b (vision), nomic-embed-text (embeddings)</dd>
+      <dt>Compilers</dt><dd class="lack">no gcc installed</dd>
+      <dd style="grid-column:2">but <code>gcc-arm-linux-gnueabi 13.2</code> is one apt-get away</dd>
+    </dl>
+  </div>
+  <div class="machine">
+    <h3>Nokia N900 <small>Maemo 5 · kernel 2.6.28 · armv7l</small></h3>
+    <dl>
+      <dt>CPU / RAM</dt><dd>Cortex-A8 with NEON, <span class="m">245 MB</span> + 768 MB swap</dd>
+      <dt>Screen</dt><dd><span class="m">800 × 480</span> resistive touch, hardware keyboard</dd>
+      <dt>Root disk</dt><dd class="lack">89 MB free</dd>
+      <dd style="grid-column:2">1.7 GB free on /opt, 25 GB on MyDocs</dd>
+      <dt>Network</dt><dd>Wi-Fi 10.0.0.70; TCP to the node's port 22 <span class="m">open</span>, port 3000 closed (as designed)</dd>
+      <dt>Present</dt><dd class="have">perl 5.8.3 · ssh · scp · SDL 1.2 · GLES (SGX) · PulseAudio · GStreamer</dd>
+      <dt>Absent</dt><dd class="lack">python · gcc · curl · wget · JSON for perl</dd>
+      <dt>Catalogue</dt><dd><span class="m">3,677</span> packages: python2.5, pygame 1.9.1, python-hildon, PySide, espeak, tcc, scummvm, drnoksnes, prboom, quake2, openttd</dd>
+      <dt>Sensors</dt><dd>accelerometer live (<code>-18 18 -918</code>), camera, FM <em>transmitter</em> with RDS text, 9 LEDs, vibrator, DSP bridge</dd>
+      <dt>Battery</dt><dd class="lack">37 %, not charging</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="note">
+  <p><strong>The one finding that shapes every idea.</strong> The N900 can reach the node, but its 2009 OpenSSH cannot finish a handshake with a 2024 sshd (<code>no hostkey alg</code>). So the tunnel the Week 11 kit assumes does not exist yet for this device. Whatever I build, milestone zero is a bridge: either a narrow HTTP relay on the node with a shared token and one more firewall rule, or a legacy-algorithm exception on the node's sshd. Both are a real security decision to argue in the proposal, not a footnote.</p>
+</div>
+
+<h2>Four proposals, ranked</h2>
+<p>The question I was asked to settle: a game on the N900, a native app that uses a free self-hosted model, or both. My read after the probe is that "both" is not a stretch goal, it is the natural shape: the node is slow enough that reading-speed text is the honest interface, and reading-speed text is what a text game wants anyway.</p>
+
+<div class="ranked">
+
+<article class="pick">
+  <h3>Dungeon Master in the Cloud</h3>
+  <div class="tags"><span class="tag on">game</span><span class="tag on">native app</span><span class="tag on">both</span></div>
+  <p>A text-and-tiles adventure on the N900. The device draws rooms, inventory, and the map in pygame at 800×480; the narrator and every non-player character are the model on the node. Tokens stream onto the screen at 6 to 10 per second, which on a handheld reads as a game "typing," not as lag. The world state stays on the device as a small JSON document, so the model never has to remember anything: each turn the game sends state plus the player's line and gets back narration plus a state diff.</p>
+  <div class="cols">
+    <div><h4>Why it is viable</h4><ul>
+      <li>python2.5 + pygame 1.9.1 are in the archival catalogue; both install to /opt, not the 89 MB root.</li>
+      <li>qwen3.5:4b at reading speed is enough; the 30B coder is for writing the code, not running the game.</li>
+      <li>Game logic runs offline; only narration needs the network, so the game degrades to canned text when the node is away.</li>
+    </ul></div>
+    <div><h4>Where it will hurt</h4><ul>
+      <li>Milestone zero, the bridge, before anything is playable.</li>
+      <li>Python 2.5 has no <code>json</code> module; the model will keep writing 2026 Python. That is the drift lesson in miniature, and my bootstrap file has to pin it.</li>
+      <li>Keeping the model inside a state schema at 4B parameters needs a harness and a test set (Week 9 material).</li>
+    </ul></div>
+  </div>
+  <div class="ask"><strong>Question for faculty:</strong> is a game whose "engine" is a remote model still a small-device project in your reading of the brief, or does the device need to carry more of the work?</div>
+</article>
+
+<article class="pick">
+  <h3>Tilt Levels</h3>
+  <div class="tags"><span class="tag on">game</span><span class="tag on">native app</span><span class="tag">telemetry</span></div>
+  <p>A marble-tilt game driven by the N900's accelerometer, which I confirmed is readable from a file in sysfs with no driver work. The model on the node is not in the play loop at all. It is the level designer: it emits levels as JSON, the device caches a pack of them, and after each session the game uploads play telemetry (time per level, deaths, where the marble stalls) and asks the model for a tuned next pack. This is the ETK method from Week 5 applied to game difficulty: measure, feed back, tune, on an underpowered box.</p>
+  <div class="cols">
+    <div><h4>Why it is viable</h4><ul>
+      <li>Fully playable offline from day one; the model only ever improves it.</li>
+      <li>pygame plus one sysfs read; the maemo catalogue already ships three accelerometer toys as proof.</li>
+      <li>The telemetry design is the assignment for Week 9 anyway.</li>
+    </ul></div>
+    <div><h4>Where it will hurt</h4><ul>
+      <li>Physics on a 600 MHz Cortex-A8 in Python: frame rate is a real budget and I will have to measure it.</li>
+      <li>Level JSON from a 4B model will need a validator that rejects unplayable maps, or a bigger model on a batch schedule.</li>
+    </ul></div>
+  </div>
+  <div class="ask"><strong>Question for faculty:</strong> does "the model designs, the device plays" satisfy the self-hosted AI outcome, given the model is never called while someone is holding the device?</div>
+</article>
+
+<article class="pick">
+  <h3>Radio Oracle</h3>
+  <div class="tags"><span class="tag on">native app</span><span class="tag">hardware</span><span class="tag">advanced modalities</span></div>
+  <p>A Hildon app that turns the N900 into a talking, broadcasting assistant. Type a question on the hardware keyboard, the node answers, espeak (in the catalogue) reads it aloud on the device, and the N900's built-in FM transmitter carries the voice to any nearby car or kitchen radio with the first line of the answer scrolling as RDS radio text. Stretch: point the camera at something, send the frame to gemma4:e4b, and have the radio describe what it sees.</p>
+  <div class="cols">
+    <div><h4>Why it is viable</h4><ul>
+      <li>Every piece is on the device already: FM transmitter exposes power, frequency and <code>rds_radio_text</code> as sysfs files; camera is /dev/video0; espeak 1.46 installs from the catalogue.</li>
+      <li>A demo that a room full of people hears on a radio is a strong final showcase.</li>
+    </ul></div>
+    <div><h4>Where it will hurt</h4><ul>
+      <li>Vision on a CPU-only node is slow: prompt evaluation of an image at rung 2 needs measuring before I promise it.</li>
+      <li>RDS text is 64 characters and the transmitter is short range and regulated; scope stays "in the room."</li>
+      <li>Less "game," more "instrument." Probably my choice if faculty steer away from games.</li>
+    </ul></div>
+  </div>
+  <div class="ask"><strong>Question for faculty:</strong> is a broadcast demo acceptable in Room 720, or should I plan on a wired line-out for the showcase?</div>
+</article>
+
+<article class="pick">
+  <h3>Cloud-Built, Hand-Run</h3>
+  <div class="tags"><span class="tag on">game</span><span class="tag">toolchain</span><span class="tag">ETK pattern</span></div>
+  <p>The purest version of the Week 5 case study: write a small C game with SDL 1.2 and the SGX OpenGL ES path, cross-compile it on sld-cloud with the arm-linux-gnueabi toolchain, package it as a gzip-only .deb, and install it on the N900 through my own laptop-hosted catalogue from the software guide. No model at runtime; the model is the co-author of every line of C and the whole build pipeline. Most ambitious on the systems side, least ambitious on the AI side.</p>
+  <div class="cols">
+    <div><h4>Why it is viable</h4><ul>
+      <li>Cross compiler is in Ubuntu's repo; the packaging gotchas (xz vs gzip, unsigned repo) are already documented in this course's own guide.</li>
+      <li>SDL 1.2, SDL_gfx, SDL_mixer and GLES headers are all in the catalogue.</li>
+    </ul></div>
+    <div><h4>Where it will hurt</h4><ul>
+      <li>glibc mismatch: gcc 13 targets a much newer libc than Maemo's. I need a sysroot copied off the device, or static linking, or fall back to tcc on the handheld itself.</li>
+      <li>Hard to show the "large language model" half at the showcase beyond the commit history.</li>
+    </ul></div>
+  </div>
+  <div class="ask"><strong>Question for faculty:</strong> would you rather see this as the build system underneath proposal 1 or 2, instead of a project on its own?</div>
+</article>
+
+</div>
+
+
+<h2>Pre-prototype results, same day</h2>
+<p>With a charger on the loaner I ran the first-week test the plan called for. Everything below happened over SSH from the laptop; nobody touched the device after plugging it in.</p>
+<div class="tw">
+<table>
+  <tr><th>Step</th><th>Result</th><th>Measured</th></tr>
+  <tr><td>python2.5 from the archival catalogue</td><td>Installs to /opt via the optify package</td><td>root disk <span class="m">−2 MB</span> (87 MB free after)</td></tr>
+  <tr><td>python-pygame 1.9.1</td><td>Blocked: depends on <code>libsdl-ttf2.0</code>, absent from the Extras index. Runtime found in Nokia's own <em>apps</em> catalogue on the coderus mirror (the guide's "alt" entry); pushed by scp, <code>dpkg -i</code>, then pygame installed with fonts working</td><td>root disk <span class="m">−1 MB</span> more</td></tr>
+  <tr><td>Marble test, real accelerometer, 800×480 fullscreen, background blit + 4 walls + 1 circle</td><td>Python is fast enough. Decision: the client stays in Python; the C toolchain is not needed for the pitch</td><td><span class="m">86 fps</span> average, worst second 77; sensor read ≈ 1.5 ms</td></tr>
+  <tr><td>Remote hands: tilt read from a file that a perl loop on the device rewrites every 100 ms</td><td>Same script, one argument changed. Marble obeyed the scripted phases</td><td><span class="m">102–105 fps</span> (file read 0.65 ms)</td></tr>
+  <tr><td>Remote eyes: <code>cat /dev/fb0</code> mid-run, scp back, RGB565 at a 4096-byte stride to PNG</td><td>Works; the marble sits where the script sent it</td><td>the grab costs frames: <span class="m">8 fps</span> for two seconds while 2 MB is read and written to the SD card</td></tr>
+</table>
+</div>
+<p><strong>What the numbers change.</strong> Both seams the plan depends on exist today: a bot can play through a file and see through the framebuffer. The framebuffer cost is the first real telemetry finding: screenshots are taken between levels or the bot's own play is corrupted. The busybox <code>sleep</code> has no fractional seconds, so the bot's writer is perl, which was already on the device. The missing SDL text library is the one packaging step a future borrower cannot do from the Application manager; it belongs in my README and probably in the course guide.</p>
+<p><strong>Committing to the plan.</strong> Tilt Levels goes ahead unchanged. Since then: the level format exists, the first hand-made level is in it, and the bot has played it end to end on the device, dying once, getting stuck once, and finishing on the fourth script. Four telemetry files record all of it.</p>
+
+<h2>Assistants validated</h2>
+<div class="tw">
+<table>
+  <tr><th>Assistant</th><th>Status</th><th>First real task</th><th>Cost</th></tr>
+  <tr><td>GitHub Copilot CLI 1.0.83</td><td>Works non-interactively, authenticated; default model reports itself as Claude Sonnet 5, billed as GitHub AI credits</td><td>Given the Python 2.5 bootstrap file and a task: designed the <code>.lvl</code> text format, one hand-made level with two turns and a hole, a loader with a validator, and a test. Zero forbidden syntax; the test passes on the N900's own interpreter.</td><td><span class="m">1 premium request</span>, 2 min 8 s, 12.6k output tokens</td></tr>
+  <tr><td>gpt-5.4-mini via Copilot</td><td>Drafting, in the slot reserved for Gemini Pro</td><td>Given the bootstrap, the level loader, and my reference loop: wrote the playable game loop, a telemetry writer, and a scripted tilt bot. Ran on the device first try at 120 fps. Then, given a bug report built from its own telemetry (the marble sank into a wall on diagonal movement, a flaw copied from my reference), rewrote the collision per axis with a push-out guard; the next run slid along walls and stopped on exact boundaries, and the fourth bot script reached the goal: <span class="m">10.3 s</span>, no deaths, against a 20 s par.</td><td><span class="m">5.3 + 3.6 credits</span> (0.33 premium each), 60 s + 69 s</td></tr>
+<tr><td>Gemini Pro</td><td>Account not ready; will rebuild the same modules for comparison</td><td></td><td></td></tr>
+  <tr><td>qwen3-coder:30b-a3b on sld-cloud</td><td>Serving; not yet asked to design a level</td><td></td><td></td></tr>
+</table>
+</div>
+<p><strong>The bytes-to-atoms rule.</strong> Assistants in this project emit bytes; only I move anything onto the device. Copilot is not granted tools: I paste the bootstrap and task into its prompt, it prints each file behind a header, I split the output, read it, carry it over the legacy SSH shim, and run it on the N900's own interpreter. Whatever happens on the handheld afterward is mine. The same rule is the game's architecture: the level designer on the node emits a text file, which is data and never code, gated by the validator, then by bot play, then by the human operator.</p>
+
+<h2>First human play-test</h2>
+<p>The instructor played the same level on the device, real accelerometer, two-minute limit. The verdict from the hand: very tricky, the input physics need tuning, maybe haptics, a more naturalistic feel. The telemetry says the same thing in numbers.</p>
+<div class="tw">
+<table>
+  <tr><th></th><th>Bot, run 4</th><th>Human, run 1</th></tr>
+  <tr><td>Outcome</td><td>goal</td><td>timeout</td></tr>
+  <tr><td>Time</td><td><span class="m">10.3 s</span></td><td><span class="m">120 s</span></td></tr>
+  <tr><td>Deaths</td><td>0</td><td><span class="m">7</span>, three of them within 1.6 s of each other</td></tr>
+  <tr><td>Peak speed</td><td>about 12 px per frame</td><td><span class="m">28.9 px per frame</span>, roughly 3,000 px/s on an 800 px screen</td></tr>
+  <tr><td>Tilt used</td><td>600 mg, constant</td><td>up to <span class="m">1,000 mg</span>, mean 232, fighting the marble</td></tr>
+  <tr><td>Wall bounces seen at 10 Hz</td><td>a handful</td><td><span class="m">267</span></td></tr>
+  <tr><td>Time in the first corridor</td><td>3 s</td><td>85 s, the last 40 parked in a corner with the device nearly flat</td></tr>
+</table>
+</div>
+<p><strong>What the trace says the physics are doing wrong.</strong> The gain was tuned for a file that writes a steady 600 mg; a hand does not do that. At the current gain a full tilt accelerates the marble at about 21,000 px/s², thirty times faster than a marble on a tilted table would move at this scale, and terminal speed is well past a screen-width per tenth of a second. Physics run per frame, and the frame rate wandered between 82 and 124, so the same tilt does different things at different moments. There is no dead zone, so a device resting almost flat (18, −36 mg in the last forty seconds) still pushes the marble into a corner. Walls return 60 % of the speed, which is why the human's trace is a ping-pong record. And a hole kills on touch, which is why the bot died hugging a wall and why three human deaths came in under two seconds: respawn, rush, die.</p>
+<p>This is the first bot-versus-human gap in the study, and it is the one the plan predicted: a level and a physics model that a scripted bot clears trivially can be nearly unplayable by a person. The fix goes to the drafter as a tuning spec with these numbers attached; the level designer on the node never sees a "good" level until a human can finish one.</p>
+
+<h2>Choosing models inside Copilot</h2>
+<p>Copilot on this account routes to 26 models from six vendors. I gave seven of them the identical small task under the Python 2.5 bootstrap (a marble-versus-hole overlap function), captured Copilot's own usage file for each, and ran every answer against the same six test cases on the N900's interpreter. All seven passed there. Cost is what separates them.</p>
+<div class="tw">
+<table>
+  <tr><th>Model</th><th>Vendor</th><th>AI credits</th><th>Legacy multiplier</th><th>Time</th><th>Device test</th></tr>
+  <tr><td>mai-code-1.1-flash</td><td>Microsoft</td><td><span class="m">0.34</span></td><td>1</td><td>6.9 s</td><td>pass</td></tr>
+  <tr><td>gemini-3.8-flash</td><td>Google</td><td><span class="m">1.26</span></td><td>14</td><td>16.0 s</td><td>pass</td></tr>
+  <tr><td>gpt-5.4-mini</td><td>OpenAI</td><td><span class="m">1.30</span></td><td>0.33</td><td>5.4 s</td><td>pass</td></tr>
+  <tr><td>kimi-k2.7-code</td><td>Moonshot</td><td><span class="m">1.80</span></td><td>1</td><td>9.3 s</td><td>pass</td></tr>
+  <tr><td>gpt-5.3-codex</td><td>OpenAI</td><td><span class="m">3.15</span></td><td>1</td><td>4.5 s</td><td>pass</td></tr>
+  <tr><td>grok-4.5</td><td>xAI</td><td><span class="m">3.91</span></td><td>1</td><td>8.8 s</td><td>pass</td></tr>
+  <tr><td>claude-sonnet-5 (default)</td><td>Anthropic</td><td><span class="m">6.55</span></td><td>1</td><td>2.4 s</td><td>not run; uses strict &lt; so a touching hole would not count</td></tr>
+</table>
+</div>
+<p>Two readings of the same table. On the AI-credit meter this account shows, the cheapest correct answer cost a twentieth of the default's. On the legacy premium-request meter (300 a month on the student plan), gemini-3.8-flash would be the most expensive thing on the list at 14 requests a call. I will re-check which meter the .edu seat is on before leaning on it.</p>
+<h3>Assignment, until Gemini Pro arrives</h3>
+<div class="tw">
+<table>
+  <tr><th>Role</th><th>Model</th><th>Why</th></tr>
+  <tr><td>Bulk drafting of the pygame client and tilt harness (the slot reserved for Gemini Pro)</td><td>gpt-5.4-mini</td><td>Correct on the device, fastest of the cheap tier, cheapest on either meter. When Gemini Pro is ready it rebuilds the same modules from the same bootstrap and task files, and the two builds are compared on the device.</td></tr>
+  <tr><td>Google stand-in for that comparison</td><td>gemini-3.8-flash</td><td>Same family as the paid model, so the later Pro-versus-Flash gap is the interesting one. Cheap on credits, ruinous on legacy requests.</td></tr>
+  <tr><td>Code review before anything is carried to the device</td><td>gpt-5.3-codex</td><td>Code specialist at a fixed 1 request; a second vendor's eyes on the drafter's work.</td></tr>
+  <tr><td>Commit messages, small edits, completion</td><td>mai-code-1.1-flash</td><td>A third of a credit; good enough for text that a human reads before committing.</td></tr>
+  <tr><td>Comparator for the self-hosted level designer</td><td>kimi-k2.7-code</td><td>Open-weight family, like the Qwen model on the node. When the node designs a level, Kimi designs one from the same prompt, so "free and self-hosted" has a "free and hosted" foil.</td></tr>
+  <tr><td>Direction, bootstrap files, hard debugging</td><td>Claude, rationed</td><td>Unchanged. Copilot lists Fable 5.1 too; not using it there, the point is to spend other budgets.</td></tr>
+</table>
+</div>
+<p>Every commit trailer names the model that wrote the lines, so the repository history itself becomes the comparison record.</p>
+
+<h2>My recommendation</h2>
+<p>Proposal 1, with proposal 4's toolchain held in reserve if Python on the device turns out too slow to draw. It is the only one of the four that is a game, a native app, and a live use of the self-hosted model at the same time, and its failure modes are all things the course teaches: drift toward modern Python, a small model wandering off a schema, a slow box that has to be measured rather than trusted.</p>
+
+<h2>First four weeks, if approved</h2>
+<div class="tw">
+<table>
+  <tr><th>By</th><th>Milestone</th><th>You know it worked when</th></tr>
+  <tr><td>9/23</td><td>The bridge: N900 fetches one model reply from the node</td><td>A perl one-liner on the device prints a sentence generated on sld-cloud, with the firewall change written down.</td></tr>
+  <tr><td>9/30</td><td>python2.5 + pygame installed to /opt; blank 800×480 window at a measured frame rate</td><td><code>df -h /</code> still shows the root partition untouched; FPS logged, not guessed.</td></tr>
+  <tr><td>10/7</td><td>Midterm pitch: one room, one NPC, streamed narration on the device</td><td>A 30-second video of the screen, tokens arriving as the player watches.</td></tr>
+  <tr><td>10/14</td><td>Bootstrap and harness files pin Python 2.5 and the state schema</td><td>The model stops writing f-strings; a schema validator rejects its bad turns and the log shows how often.</td></tr>
+</table>
+</div>
+
+<h2>Things I would like the library to know</h2>
+<ol class="steps">
+  <li>The loaner N900 is at 37 % and not on a charger. It cannot survive a class session as it is.</li>
+  <li>Both catalogues from the guide are configured and answering; the laptop-hosted one at 10.0.0.66 is still listed in apt and will 404 when that laptop is away.</li>
+  <li>Root disk is at 60 %. Everything I install goes to /opt on purpose.</li>
+</ol>
+
+<footer>Draft for the 10/7 midterm pitch. Co-authored with Claude Fable 5.1; the probe transcript will be linked from the project repo as the first attribution record.</footer>
+</div>
