@@ -6,6 +6,12 @@ from telemetry import Telemetry
 ACCEL = '/sys/class/i2c-adapter/i2c-3/3-001d/coord'
 VIBRATOR = '/sys/class/leds/twl4030:vibrator/brightness'
 
+# Axis mapping, from the N900 accelerometer table (wiki.maemo.org/N900_accelerometer):
+#   right edge down  -> coord x = -1000      bottom edge down -> coord y = -1000
+# so device x runs along the long side of the screen and device y along the short side.
+# A marble rolls toward the low edge:  screen_ax = -x_mg,  screen_ay = -y_mg.
+# (Until 2026-09-07 the two axes were transposed: a left/right tilt moved the marble
+# up/down. See docs/BUG-002.md.)
 ACCEL_PER_MG = 1.2
 DRAG = 0.8
 MAX_SPEED = 900.0
@@ -32,6 +38,16 @@ def hole_hit(px, py, holes):
             return i
         i += 1
     return -1
+
+def apply_dead_zone(mg):
+    """Soft dead zone: readings inside +/-TILT_DEAD_ZONE are zero, and the
+    zone's width is subtracted outside it, so the response is continuous
+    instead of jumping from 0 to 40 mg at the edge."""
+    if mg > TILT_DEAD_ZONE:
+        return mg - TILT_DEAD_ZONE
+    if mg < -TILT_DEAD_ZONE:
+        return mg + TILT_DEAD_ZONE
+    return 0.0
 
 def sanitize_name(name):
     s = re.sub('[^a-z0-9]+', '-', name.lower()).strip('-')
@@ -291,17 +307,14 @@ def main():
                     sum_y += tilt_history[i][1]
                     i += 1
 
-                screen_ax = sum_x / len(tilt_history)
-                screen_ay = sum_y / len(tilt_history)
-
-                if screen_ax > -TILT_DEAD_ZONE and screen_ax < TILT_DEAD_ZONE:
-                    screen_ax = 0.0
-                if screen_ay > -TILT_DEAD_ZONE and screen_ay < TILT_DEAD_ZONE:
-                    screen_ay = 0.0
+                tilt_x = apply_dead_zone(sum_x / len(tilt_history))
+                tilt_y = apply_dead_zone(sum_y / len(tilt_history))
+                screen_ax = -tilt_x
+                screen_ay = -tilt_y
 
             if calibrated:
-                vx += (-screen_ay) * ACCEL_PER_MG * dt
-                vy += (-screen_ax) * ACCEL_PER_MG * dt
+                vx += screen_ax * ACCEL_PER_MG * dt
+                vy += screen_ay * ACCEL_PER_MG * dt
 
                 drag = 1.0 - DRAG * dt
                 if drag < 0.0:
