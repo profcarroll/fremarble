@@ -1,0 +1,1 @@
+RESULT outcome=quit elapsed=28.3 deaths=0 par=12 frames=2896 avg_fps=102.2

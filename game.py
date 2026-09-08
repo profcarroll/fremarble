@@ -17,8 +17,6 @@ DRAG = 0.8
 MAX_SPEED = 900.0
 RESTITUTION = 0.3
 CALIBRATION_WINDOW = 0.5
-READY_PAUSE = 0.6
-COMPLETE_HOLD = 4.0
 TILT_DEAD_ZONE = 40.0
 WALL_BUZZ_LOW = 150.0
 WALL_BUZZ_HIGH = 400.0
@@ -64,22 +62,6 @@ def default_telemetry_path(level_path, lvl):
     if not os.path.isdir(d):
         os.makedirs(d)
     return os.path.join(d, base + '-' + str(int(time.time())) + '.csv')
-
-def level_telemetry_path(explicit, level_path, lvl):
-    """Derive a per-level telemetry path from an explicit base path, so the
-    levels in a pack do not all write over one file. telemetry/run.csv plus a
-    level named 'Switchback' becomes telemetry/run-switchback.csv."""
-    d = os.path.dirname(explicit)
-    stem, ext = os.path.splitext(os.path.basename(explicit))
-    if not ext:
-        ext = '.csv'
-    base = lvl.get('name', '')
-    if not base:
-        base = os.path.splitext(os.path.basename(level_path))[0]
-    name = stem + '-' + sanitize_name(base) + ext
-    if d:
-        return os.path.join(d, name)
-    return name
 
 def read_tilt(path, last):
     try:
@@ -214,15 +196,32 @@ def resolve_wall_overlap(px, py, walls):
 
     return px, py
 
-def play_level(screen, lvl, tilt_path, telemetry_path, timeout_s, session, first_level):
-    """Play one level to completion and return (outcome, elapsed, deaths, frames).
+def write_state(path, px, py, vx, vy):
+    # Live marble state for a generic autopilot bot (tools/autoplay_bot.py) that
+    # must steer levels it has never seen scripted waypoints for.
+    try:
+        f = open(path, 'w')
+        try:
+            f.write('%f %f %f %f\n' % (px, py, vx, vy))
+        finally:
+            f.close()
+    except Exception:
+        pass
 
-    outcome is 'goal', 'quit' or 'timeout'. Calibration and vibrator state live
-    in the session dict and carry across levels, so the player only sets "level"
-    once at the start of the pack. On the first level the half-second calibration
-    is itself the get-ready pause; later levels freeze briefly (READY_PAUSE) so
-    the new board can be read before it goes live.
-    """
+def play_level(screen, level_path, tilt_path, telemetry_path, timeout_s, state_path=None):
+    """Run one level to completion on an already-initialized screen. Returns a
+    result dict; never calls pygame.init/quit so a pack can chain levels
+    without the display flashing closed and reopening between them."""
+    lvl = level.load(level_path)
+    errors = level.validate(lvl)
+    if errors:
+        i = 0
+        while i < len(errors):
+            sys.stdout.write(errors[i] + '\n')
+            i += 1
+        return {'name': lvl.get('name') or level_path, 'outcome': 'invalid', 'elapsed': 0.0,
+                'deaths': 0, 'par': lvl.get('par', 0.0), 'frames': 0, 'avg_fps': 0.0}
+
     bg, walls = build_background(lvl)
     tx = Telemetry(telemetry_path)
 
@@ -231,6 +230,7 @@ def play_level(screen, lvl, tilt_path, telemetry_path, timeout_s, session, first
     vx = 0.0
     vy = 0.0
 
+    last_tilt = (0, 0, -1000)
     t0 = time.time()
     last_frame_t = t0
     last_sample = t0
@@ -241,133 +241,134 @@ def play_level(screen, lvl, tilt_path, telemetry_path, timeout_s, session, first
     deaths = 0
     outcome = ''
     pending_event = ''
+
+    calibration_sum_x = 0.0
+    calibration_sum_y = 0.0
+    calibration_count = 0
+    calibrated = 0
+    level_x = 0.0
+    level_y = 0.0
     tilt_history = []
 
-    if first_level:
-        ready_delay = 0.0
-    else:
-        ready_delay = READY_PAUSE
+    vibrate_until = 0.0
+    vibrator_on = 0
 
-    while not outcome:
-        frame_now = time.time()
-        if frame_now - t0 >= timeout_s:
-            outcome = 'timeout'
-            break
-
-        session['vibrator_on'] = update_vibrator(frame_now, session['vibrate_until'], session['vibrator_on'])
-
-        for e in pygame.event.get():
-            if e.type == pygame.QUIT or e.type == pygame.KEYDOWN or e.type == pygame.MOUSEBUTTONDOWN:
-                outcome = 'quit'
+    try:
+        while not outcome:
+            frame_now = time.time()
+            if frame_now - t0 >= timeout_s:
+                outcome = 'timeout'
                 break
-        if outcome:
-            break
 
-        dt = frame_now - last_frame_t
-        if dt < 0.0:
-            dt = 0.0
-        if dt > 0.05:
-            dt = 0.05
-        last_frame_t = frame_now
+            vibrator_on = update_vibrator(frame_now, vibrate_until, vibrator_on)
 
-        last_tilt = read_tilt(tilt_path, session['last_tilt'])
-        session['last_tilt'] = last_tilt
-        raw_x, raw_y, raw_z = last_tilt
+            for e in pygame.event.get():
+                if e.type == pygame.QUIT or e.type == pygame.KEYDOWN or e.type == pygame.MOUSEBUTTONDOWN:
+                    outcome = 'quit'
+                    break
+            if outcome:
+                break
 
-        if not session['calibrated']:
-            session['calib_sum_x'] += raw_x
-            session['calib_sum_y'] += raw_y
-            session['calib_count'] += 1
-            if frame_now - t0 >= CALIBRATION_WINDOW and session['calib_count'] > 0:
-                session['level_x'] = session['calib_sum_x'] / session['calib_count']
-                session['level_y'] = session['calib_sum_y'] / session['calib_count']
-                session['calibrated'] = 1
-                tilt_history = []
-            screen_ax = 0.0
-            screen_ay = 0.0
-        else:
-            adj_x = raw_x - session['level_x']
-            adj_y = raw_y - session['level_y']
-            tilt_history.append((adj_x, adj_y))
-            if len(tilt_history) > 3:
-                del tilt_history[0]
+            dt = frame_now - last_frame_t
+            if dt < 0.0:
+                dt = 0.0
+            if dt > 0.05:
+                dt = 0.05
+            last_frame_t = frame_now
 
-            sum_x = 0.0
-            sum_y = 0.0
-            i = 0
-            while i < len(tilt_history):
-                sum_x += tilt_history[i][0]
-                sum_y += tilt_history[i][1]
-                i += 1
+            last_tilt = read_tilt(tilt_path, last_tilt)
+            raw_x, raw_y, raw_z = last_tilt
 
-            tilt_x = apply_dead_zone(sum_x / len(tilt_history))
-            tilt_y = apply_dead_zone(sum_y / len(tilt_history))
-            screen_ax = -tilt_x
-            screen_ay = -tilt_y
+            if not calibrated:
+                calibration_sum_x += raw_x
+                calibration_sum_y += raw_y
+                calibration_count += 1
+                if frame_now - t0 >= CALIBRATION_WINDOW and calibration_count > 0:
+                    level_x = calibration_sum_x / calibration_count
+                    level_y = calibration_sum_y / calibration_count
+                    calibrated = 1
+                    tilt_history = []
+                screen_ax = 0.0
+                screen_ay = 0.0
+            else:
+                adj_x = raw_x - level_x
+                adj_y = raw_y - level_y
+                tilt_history.append((adj_x, adj_y))
+                if len(tilt_history) > 3:
+                    del tilt_history[0]
 
-        live = session['calibrated'] and (frame_now - t0) >= ready_delay
+                sum_x = 0.0
+                sum_y = 0.0
+                i = 0
+                while i < len(tilt_history):
+                    sum_x += tilt_history[i][0]
+                    sum_y += tilt_history[i][1]
+                    i += 1
 
-        if live:
-            vx += screen_ax * ACCEL_PER_MG * dt
-            vy += screen_ay * ACCEL_PER_MG * dt
+                tilt_x = apply_dead_zone(sum_x / len(tilt_history))
+                tilt_y = apply_dead_zone(sum_y / len(tilt_history))
+                screen_ax = -tilt_x
+                screen_ay = -tilt_y
 
-            drag = 1.0 - DRAG * dt
-            if drag < 0.0:
-                drag = 0.0
-            vx *= drag
-            vy *= drag
+            if calibrated:
+                vx += screen_ax * ACCEL_PER_MG * dt
+                vy += screen_ay * ACCEL_PER_MG * dt
 
-            speed_sq = vx * vx + vy * vy
-            max_speed_sq = MAX_SPEED * MAX_SPEED
-            if speed_sq > max_speed_sq:
-                speed = math.sqrt(speed_sq)
-                if speed > 0.0:
-                    scale = MAX_SPEED / speed
-                    vx *= scale
-                    vy *= scale
+                drag = 1.0 - DRAG * dt
+                if drag < 0.0:
+                    drag = 0.0
+                vx *= drag
+                vy *= drag
 
-            nx = px + vx * dt
-            ny = py + vy * dt
+                speed_sq = vx * vx + vy * vy
+                max_speed_sq = MAX_SPEED * MAX_SPEED
+                if speed_sq > max_speed_sq:
+                    speed = math.sqrt(speed_sq)
+                    if speed > 0.0:
+                        scale = MAX_SPEED / speed
+                        vx *= scale
+                        vy *= scale
 
-            wall_buzz_ms = 0
+                nx = px + vx * dt
+                ny = py + vy * dt
 
-            test_x = marble_rect(nx, py)
-            if rect_hits_screen(test_x) or rect_hits_wall(test_x, walls):
-                impact = vx
-                if impact < 0.0:
-                    impact = -impact
-                buzz_ms = wall_buzz_duration(impact)
-                if buzz_ms > wall_buzz_ms:
-                    wall_buzz_ms = buzz_ms
-                nx = px
-                vx = -vx * RESTITUTION
+                wall_buzz_ms = 0
 
-            test_y = marble_rect(nx, ny)
-            if rect_hits_screen(test_y) or rect_hits_wall(test_y, walls):
-                impact = vy
-                if impact < 0.0:
-                    impact = -impact
-                buzz_ms = wall_buzz_duration(impact)
-                if buzz_ms > wall_buzz_ms:
-                    wall_buzz_ms = buzz_ms
-                ny = py
-                vy = -vy * RESTITUTION
+                test_x = marble_rect(nx, py)
+                if rect_hits_screen(test_x) or rect_hits_wall(test_x, walls):
+                    impact = vx
+                    if impact < 0.0:
+                        impact = -impact
+                    buzz_ms = wall_buzz_duration(impact)
+                    if buzz_ms > wall_buzz_ms:
+                        wall_buzz_ms = buzz_ms
+                    nx = px
+                    vx = -vx * RESTITUTION
 
-            px, py = nx, ny
-            px, py = resolve_wall_overlap(px, py, walls)
+                test_y = marble_rect(nx, ny)
+                if rect_hits_screen(test_y) or rect_hits_wall(test_y, walls):
+                    impact = vy
+                    if impact < 0.0:
+                        impact = -impact
+                    buzz_ms = wall_buzz_duration(impact)
+                    if buzz_ms > wall_buzz_ms:
+                        wall_buzz_ms = buzz_ms
+                    ny = py
+                    vy = -vy * RESTITUTION
 
-            if wall_buzz_ms > 0:
-                session['vibrate_until'], session['vibrator_on'] = buzz_vibrator(
-                    frame_now, wall_buzz_ms, session['vibrate_until'], session['vibrator_on'])
-                if not pending_event:
-                    pending_event = 'wall'
+                px, py = nx, ny
+                px, py = resolve_wall_overlap(px, py, walls)
+
+                if wall_buzz_ms > 0:
+                    vibrate_until, vibrator_on = buzz_vibrator(frame_now, wall_buzz_ms, vibrate_until, vibrator_on)
+                    if not pending_event:
+                        pending_event = 'wall'
 
             hit = hole_hit(px, py, lvl['holes'])
             if hit >= 0:
                 pending_event = 'hole'
                 deaths += 1
-                session['vibrate_until'], session['vibrator_on'] = buzz_vibrator(
-                    frame_now, 250, session['vibrate_until'], session['vibrator_on'])
+                vibrate_until, vibrator_on = buzz_vibrator(frame_now, 250, vibrate_until, vibrator_on)
                 px, py = spawn_x, spawn_y
                 vx = 0.0
                 vy = 0.0
@@ -377,192 +378,165 @@ def play_level(screen, lvl, tilt_path, telemetry_path, timeout_s, session, first
             dy = py - gy
             if dx * dx + dy * dy <= gr * gr:
                 outcome = 'goal'
-                session['vibrate_until'], session['vibrator_on'] = buzz_vibrator(
-                    frame_now, 120, session['vibrate_until'], session['vibrator_on'])
+                vibrate_until, vibrator_on = buzz_vibrator(frame_now, 120, vibrate_until, vibrator_on)
 
-        screen.blit(bg, (0, 0))
-        pygame.draw.circle(screen, (240, 240, 240), (int(px), int(py)), level.MARBLE_RADIUS)
-        pygame.display.flip()
+            screen.blit(bg, (0, 0))
+            pygame.draw.circle(screen, (240, 240, 240), (int(px), int(py)), level.MARBLE_RADIUS)
+            pygame.display.flip()
 
-        frames += 1
-        sec_frames += 1
+            if state_path:
+                write_state(state_path, px, py, vx, vy)
 
-        sample_now = time.time()
-        if sample_now - last_sample >= 0.1:
-            tx.sample(sample_now - t0, px, py, vx, vy, raw_x, raw_y, pending_event)
-            pending_event = ''
-            last_sample = sample_now
-        if sample_now - last_second >= 1.0:
-            tx.second(sample_now - t0, sec_frames / (sample_now - last_second))
-            sec_frames = 0
-            last_second = sample_now
+            frames += 1
+            sec_frames += 1
 
-        if outcome == 'goal':
-            tx.sample(sample_now - t0, px, py, vx, vy, raw_x, raw_y, 'goal')
+            sample_now = time.time()
+            if sample_now - last_sample >= 0.1:
+                tx.sample(sample_now - t0, px, py, vx, vy, raw_x, raw_y, pending_event)
+                pending_event = ''
+                last_sample = sample_now
+            if sample_now - last_second >= 1.0:
+                tx.second(sample_now - t0, sec_frames / (sample_now - last_second))
+                sec_frames = 0
+                last_second = sample_now
 
-    elapsed = time.time() - t0
-    avg_fps = frames / elapsed if elapsed > 0.0 else 0.0
-    if not outcome:
-        outcome = 'timeout'
+            if outcome == 'goal':
+                tx.sample(sample_now - t0, px, py, vx, vy, raw_x, raw_y, 'goal')
 
-    tx.close({'outcome': outcome, 'elapsed': elapsed, 'deaths': deaths, 'par': lvl['par'],
-              'frames': frames, 'avg_fps': avg_fps})
-    return outcome, elapsed, deaths, frames
+        elapsed = time.time() - t0
+        avg_fps = frames / elapsed if elapsed > 0.0 else 0.0
+        if not outcome:
+            outcome = 'timeout'
 
-def new_session():
-    return {
-        'calibrated': 0,
-        'level_x': 0.0,
-        'level_y': 0.0,
-        'calib_sum_x': 0.0,
-        'calib_sum_y': 0.0,
-        'calib_count': 0,
-        'last_tilt': (0, 0, -1000),
-        'vibrate_until': 0.0,
-        'vibrator_on': 0,
-    }
+        tx.close({'outcome': outcome, 'elapsed': elapsed, 'deaths': deaths, 'par': lvl['par'],
+                  'frames': frames, 'avg_fps': avg_fps})
+        return {'name': lvl.get('name') or level_path, 'outcome': outcome, 'elapsed': elapsed,
+                'deaths': deaths, 'par': lvl['par'], 'frames': frames, 'avg_fps': avg_fps}
+    finally:
+        write_vibrator('0')
 
-def show_complete(screen):
-    """Hold a 'pack complete' screen after the last level, so finishing reads as
-    a win instead of the fullscreen window vanishing like a crash. Returns on a
-    tap/key or after COMPLETE_HOLD seconds."""
-    write_vibrator('0')
-    surf = pygame.Surface((W, H)).convert()
-    surf.fill((18, 34, 24))
-    cx = W // 2
-    cy = H // 2
-    pygame.draw.circle(surf, (240, 200, 60), (cx, cy), 60, 3)
-    pygame.draw.circle(surf, (240, 240, 240), (cx, cy), level.MARBLE_RADIUS)
-    try:
-        pygame.font.init()
-        font = pygame.font.Font(None, 64)
-        label = font.render('Pack complete', True, (240, 240, 240))
-        rect = label.get_rect()
-        rect.center = (cx, cy - 110)
-        surf.blit(label, rect)
-    except Exception:
-        pass
-    screen.blit(surf, (0, 0))
-    pygame.display.flip()
-    start = time.time()
-    while time.time() - start < COMPLETE_HOLD:
-        stop = 0
-        for e in pygame.event.get():
-            if e.type == pygame.QUIT or e.type == pygame.KEYDOWN or e.type == pygame.MOUSEBUTTONDOWN:
-                stop = 1
-                break
-        if stop:
-            break
-        time.sleep(0.03)
+def draw_pack_summary(screen, results):
+    screen.fill((20, 24, 30))
+    font = pygame.font.Font(None, 28)
+    small = pygame.font.Font(None, 22)
 
-def default_levels_dir():
-    """The pack played when game.py is given no level argument: the levels/
-    directory next to this file, so the app-grid launcher (which passes no
-    arguments) plays the whole pack regardless of the working directory."""
-    here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(here, 'levels')
-
-def main():
-    if len(sys.argv) > 1 and sys.argv[1]:
-        target = sys.argv[1]
-    else:
-        target = default_levels_dir()
-    if len(sys.argv) > 2 and sys.argv[2]:
-        tilt_path = sys.argv[2]
-    else:
-        tilt_path = ACCEL
-    explicit_telemetry = sys.argv[3] if len(sys.argv) > 3 else ''
-    if len(sys.argv) > 4:
-        timeout_s = float(sys.argv[4])
-    else:
-        timeout_s = 60.0
-
-    playlist = level.find_levels(target)
-    if not playlist:
-        sys.stderr.write('no .lvl files found at %s\n' % target)
-        return 2
-
-    # Load and validate the whole pack up front, so a bad level fails before
-    # any play starts rather than halfway through the session.
-    loaded = []
+    lines = ['PACK COMPLETE']
+    cleared = 0
+    total_deaths = 0
     i = 0
-    while i < len(playlist):
-        p = playlist[i]
-        lvl = level.load(p)
-        errors = level.validate(lvl)
-        if errors:
-            sys.stdout.write('FAIL %s\n' % p)
-            j = 0
-            while j < len(errors):
-                sys.stdout.write('  ' + errors[j] + '\n')
-                j += 1
-            return 2
-        loaded.append((p, lvl))
+    while i < len(results):
+        r = results[i]
+        if r['outcome'] == 'goal':
+            cleared += 1
+        total_deaths += r['deaths']
+        lines.append('%-24s %-8s %5.1fs  deaths=%d' % (
+            r['name'][:24], r['outcome'], r['elapsed'], r['deaths']))
         i += 1
+    lines.append('')
+    lines.append('%d/%d cleared, %d total deaths' % (cleared, len(results), total_deaths))
+    lines.append('tap or press a key to exit')
 
-    multi = len(loaded) > 1
+    y = 30
+    i = 0
+    while i < len(lines):
+        f = font if i == 0 else small
+        surf = f.render(lines[i], True, (240, 240, 240))
+        screen.blit(surf, (30, y))
+        y += 30 if i == 0 else 26
+        i += 1
+    pygame.display.flip()
 
+def wait_for_dismiss(timeout_s=30.0):
+    t0 = time.time()
+    while time.time() - t0 < timeout_s:
+        for e in pygame.event.get():
+            if e.type in (pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
+                return
+        time.sleep(0.1)
+
+def main_pack(level_paths, timeout_s=60.0):
     pygame.init()
     pygame.mouse.set_visible(False)
     screen = pygame.display.set_mode((W, H), pygame.FULLSCREEN, 16)
 
-    session = new_session()
-    session_t0 = time.time()
-    total_deaths = 0
-    total_frames = 0
-    cleared = 0
-    session_outcome = 'complete'
-
+    results = []
+    i = 0
     try:
-        i = 0
-        while i < len(loaded):
-            p, lvl = loaded[i]
-            if explicit_telemetry and not multi:
-                telemetry_path = explicit_telemetry
-            elif explicit_telemetry:
-                telemetry_path = level_telemetry_path(explicit_telemetry, p, lvl)
-            else:
-                telemetry_path = default_telemetry_path(p, lvl)
-
-            label = lvl.get('name', '')
-            if not label:
-                label = os.path.splitext(os.path.basename(p))[0]
-            label = sanitize_name(label)
-
-            outcome, elapsed, deaths, frames = play_level(
-                screen, lvl, tilt_path, telemetry_path, timeout_s, session, i == 0)
-            total_deaths += deaths
-            total_frames += frames
-
-            sys.stdout.write('RESULT level=%s outcome=%s elapsed=%.1f deaths=%d par=%g frames=%d avg_fps=%.1f\n' % (
-                label, outcome, elapsed, deaths, lvl['par'], frames,
-                frames / elapsed if elapsed > 0.0 else 0.0))
+        while i < len(level_paths):
+            level_path = level_paths[i]
+            lvl_probe = level.load(level_path)
+            telemetry_path = default_telemetry_path(level_path, lvl_probe)
+            result = play_level(screen, level_path, ACCEL, telemetry_path, timeout_s)
+            results.append(result)
+            sys.stdout.write('RESULT level=%s outcome=%s elapsed=%.1f deaths=%d par=%g\n' % (
+                level_path, result['outcome'], result['elapsed'], result['deaths'], result['par']))
             sys.stdout.flush()
-
-            if outcome == 'goal':
-                cleared += 1
-                i += 1
-            else:
-                session_outcome = outcome
+            if result['outcome'] == 'quit':
                 break
+            i += 1
 
-        total_elapsed = time.time() - session_t0
-        avg_fps = total_frames / total_elapsed if total_elapsed > 0.0 else 0.0
-        if session_outcome == 'complete':
-            show_complete(screen)
-        pygame.quit()
-        sys.stdout.write('RESULT outcome=%s levels_cleared=%d levels=%d elapsed=%.1f deaths=%d frames=%d avg_fps=%.1f\n' % (
-            session_outcome, cleared, len(loaded), total_elapsed, total_deaths, total_frames, avg_fps))
-        sys.stdout.flush()
-        if session_outcome == 'complete':
-            return 0
-        if session_outcome == 'quit':
-            return 1
-        if session_outcome == 'timeout':
-            return 3
-        return 1
+        draw_pack_summary(screen, results)
+        wait_for_dismiss()
     finally:
-        write_vibrator('0')
+        pygame.quit()
+    return 0
+
+def main():
+    if len(sys.argv) < 2:
+        sys.stderr.write(
+            'usage: python2.5 game.py <level.lvl> [tilt_source] [telemetry_csv] [timeout_s] [state_file]\n'
+            '       python2.5 game.py --pack <level.lvl> [level.lvl ...] [timeout_s]\n')
+        return 2
+
+    if sys.argv[1] == '--pack':
+        pack_args = sys.argv[2:]
+        if not pack_args:
+            sys.stderr.write('--pack needs at least one level file\n')
+            return 2
+        timeout_s = 60.0
+        last = pack_args[-1]
+        if last.replace('.', '', 1).isdigit():
+            timeout_s = float(last)
+            pack_args = pack_args[:-1]
+        if not pack_args:
+            sys.stderr.write('--pack needs at least one level file\n')
+            return 2
+        return main_pack(pack_args, timeout_s)
+
+    level_path = sys.argv[1]
+    if len(sys.argv) > 2:
+        tilt_path = sys.argv[2]
+    else:
+        tilt_path = ACCEL
+    if len(sys.argv) > 4:
+        timeout_s = float(sys.argv[4])
+    else:
+        timeout_s = 60.0
+    state_path = sys.argv[5] if len(sys.argv) > 5 else None
+
+    lvl_probe = level.load(level_path)
+    telemetry_path = sys.argv[3] if len(sys.argv) > 3 else default_telemetry_path(level_path, lvl_probe)
+
+    pygame.init()
+    pygame.mouse.set_visible(False)
+    screen = pygame.display.set_mode((W, H), pygame.FULLSCREEN, 16)
+    result = play_level(screen, level_path, tilt_path, telemetry_path, timeout_s, state_path)
+    pygame.quit()
+
+    if result['outcome'] == 'invalid':
+        return 2
+    sys.stdout.write('RESULT outcome=%s elapsed=%.1f deaths=%d par=%g frames=%d avg_fps=%.1f\n' % (
+        result['outcome'], result['elapsed'], result['deaths'], result['par'],
+        result['frames'], result['avg_fps']))
+    sys.stdout.flush()
+    if result['outcome'] == 'goal':
+        return 0
+    if result['outcome'] == 'quit':
+        return 1
+    if result['outcome'] == 'timeout':
+        return 3
+    return 1
 
 if __name__ == '__main__':
     sys.exit(main())
+

@@ -30,9 +30,12 @@ OPTS="$OPTS -o ConnectTimeout=15"
 GAME="game.py level.py telemetry.py bot_tilt.py test_level.py"
 
 echo "-> $HOST:$DEST"
-ssh $OPTS "$HOST" "mkdir -p $DEST/levels $DEST/tools $DEST/desktop"
+ssh $OPTS "$HOST" "mkdir -p $DEST/levels/generated $DEST/tools $DEST/desktop"
 scp $OPTS $GAME "$HOST:$DEST/"
 scp $OPTS levels/*.lvl levels/FORMAT.md "$HOST:$DEST/levels/"
+if ls levels/generated/*.lvl >/dev/null 2>&1; then
+    scp $OPTS levels/generated/*.lvl "$HOST:$DEST/levels/generated/"
+fi
 scp $OPTS tools/marble_fps.py "$HOST:$DEST/tools/"
 scp $OPTS desktop/fremarble desktop/fremarble.desktop desktop/fremarble.png \
          desktop/install.sh "$HOST:$DEST/desktop/"
