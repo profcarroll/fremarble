@@ -1,9 +1,40 @@
 # level.py - load and validate Tilt Levels .lvl files
 # Python 2.5 safe: no json, no with, no print(), no dict comprehensions.
 
+import os
+
 SCREEN_W = 800
 SCREEN_H = 480
 MARBLE_RADIUS = 18
+
+
+def find_levels(path):
+    """Return the ordered list of .lvl files to play, given a file or directory.
+
+    A directory is a pack: every .lvl inside it, sorted by name, played in
+    order so reaching the goal advances to the next one. A single file is one
+    level, played on its own -- which is how the bot and per-level telemetry
+    probes stay scoped to exactly one level.
+    """
+    if not os.path.isdir(path):
+        return [path]
+
+    names = []
+    entries = os.listdir(path)
+    i = 0
+    while i < len(entries):
+        n = entries[i]
+        if n.lower().endswith('.lvl'):
+            names.append(n)
+        i += 1
+    names.sort()
+
+    out = []
+    i = 0
+    while i < len(names):
+        out.append(os.path.join(path, names[i]))
+        i += 1
+    return out
 
 
 def load(path):
