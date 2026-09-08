@@ -1,0 +1,1 @@
+RESULT outcome=goal elapsed=7.2 deaths=0 par=25 frames=768 avg_fps=106.4

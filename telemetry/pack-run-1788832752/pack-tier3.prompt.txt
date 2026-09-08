@@ -1,0 +1,41 @@
+You are designing one level for "Tilt Levels", a Marble Madness-style tilt game. Screen is 800x480px, origin top-left, marble radius 18px.
+
+Output ONLY the level file, using this exact format (no markdown fences, no commentary before or after):
+
+# Tilt Levels file format (.lvl)
+
+Plain text, one directive per line. No JSON, no nesting. Parsed with
+`str.split()` only. Blank lines and lines starting with `#` are ignored.
+Screen is 800x480 px, origin (0,0) at top-left. Marble radius is a fixed
+game constant (18 px), not stored per level.
+
+Directives (all values are numbers unless noted):
+
+    NAME <text>              rest of line is the level's display name
+    PAR <seconds>            target completion time
+    START <x> <y>            marble spawn point (once)
+    GOAL <x> <y> <radius>    goal circle (once)
+    WALL <x> <y> <w> <h>     one axis-aligned wall rect (repeatable)
+    HOLE <x> <y> <radius>    one deadly hole circle (repeatable)
+
+x,y for WALL is its top-left corner. Order of directives does not matter.
+Unknown directives are ignored (forward compatible).
+
+## Worked example
+
+    NAME Corner Test
+    PAR 15
+    START 60 60
+    GOAL 700 400 20
+    WALL 0 0 800 40
+    WALL 0 200 800 40
+    HOLE 650 220 18
+
+This describes a short corridor between two horizontal walls (y 40-200),
+a hole near the goal, and a 15 second par time.
+
+Difficulty target: TIER 3 (hard): five or more turns, corridor 50-60px wide (minimum survivable gap is 36px), a hole cluster guarding the goal, at least one dead-end branch off the true path, tight par.
+
+Feedback from the last level played: tier 2: bot did not finish (quit) -- too hard, ease up
+
+Rules: the START point and the GOAL circle must not overlap any WALL, both must be fully on screen, and every gap between walls the marble must pass through must be at least 36px (2x marble radius). Use the NAME directive: pack-tier3.

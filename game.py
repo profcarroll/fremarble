@@ -196,20 +196,22 @@ def resolve_wall_overlap(px, py, walls):
 
     return px, py
 
-def main():
-    if len(sys.argv) < 2:
-        sys.stderr.write('usage: python2.5 game.py <level.lvl> [tilt_source] [telemetry_csv] [timeout_s]\n')
-        return 2
-    level_path = sys.argv[1]
-    if len(sys.argv) > 2:
-        tilt_path = sys.argv[2]
-    else:
-        tilt_path = ACCEL
-    if len(sys.argv) > 4:
-        timeout_s = float(sys.argv[4])
-    else:
-        timeout_s = 60.0
+def write_state(path, px, py, vx, vy):
+    # Live marble state for a generic autopilot bot (tools/autoplay_bot.py) that
+    # must steer levels it has never seen scripted waypoints for.
+    try:
+        f = open(path, 'w')
+        try:
+            f.write('%f %f %f %f\n' % (px, py, vx, vy))
+        finally:
+            f.close()
+    except Exception:
+        pass
 
+def play_level(screen, level_path, tilt_path, telemetry_path, timeout_s, state_path=None):
+    """Run one level to completion on an already-initialized screen. Returns a
+    result dict; never calls pygame.init/quit so a pack can chain levels
+    without the display flashing closed and reopening between them."""
     lvl = level.load(level_path)
     errors = level.validate(lvl)
     if errors:
@@ -217,13 +219,9 @@ def main():
         while i < len(errors):
             sys.stdout.write(errors[i] + '\n')
             i += 1
-        return 2
+        return {'name': lvl.get('name') or level_path, 'outcome': 'invalid', 'elapsed': 0.0,
+                'deaths': 0, 'par': lvl.get('par', 0.0), 'frames': 0, 'avg_fps': 0.0}
 
-    telemetry_path = sys.argv[3] if len(sys.argv) > 3 else default_telemetry_path(level_path, lvl)
-
-    pygame.init()
-    pygame.mouse.set_visible(False)
-    screen = pygame.display.set_mode((W, H), pygame.FULLSCREEN, 16)
     bg, walls = build_background(lvl)
     tx = Telemetry(telemetry_path)
 
@@ -386,6 +384,9 @@ def main():
             pygame.draw.circle(screen, (240, 240, 240), (int(px), int(py)), level.MARBLE_RADIUS)
             pygame.display.flip()
 
+            if state_path:
+                write_state(state_path, px, py, vx, vy)
+
             frames += 1
             sec_frames += 1
 
@@ -409,19 +410,133 @@ def main():
 
         tx.close({'outcome': outcome, 'elapsed': elapsed, 'deaths': deaths, 'par': lvl['par'],
                   'frames': frames, 'avg_fps': avg_fps})
-        pygame.quit()
-        sys.stdout.write('RESULT outcome=%s elapsed=%.1f deaths=%d par=%g frames=%d avg_fps=%.1f\n' % (
-            outcome, elapsed, deaths, lvl['par'], frames, avg_fps))
-        sys.stdout.flush()
-        if outcome == 'goal':
-            return 0
-        if outcome == 'quit':
-            return 1
-        if outcome == 'timeout':
-            return 3
-        return 1
+        return {'name': lvl.get('name') or level_path, 'outcome': outcome, 'elapsed': elapsed,
+                'deaths': deaths, 'par': lvl['par'], 'frames': frames, 'avg_fps': avg_fps}
     finally:
         write_vibrator('0')
 
+def draw_pack_summary(screen, results):
+    screen.fill((20, 24, 30))
+    font = pygame.font.Font(None, 28)
+    small = pygame.font.Font(None, 22)
+
+    lines = ['PACK COMPLETE']
+    cleared = 0
+    total_deaths = 0
+    i = 0
+    while i < len(results):
+        r = results[i]
+        if r['outcome'] == 'goal':
+            cleared += 1
+        total_deaths += r['deaths']
+        lines.append('%-24s %-8s %5.1fs  deaths=%d' % (
+            r['name'][:24], r['outcome'], r['elapsed'], r['deaths']))
+        i += 1
+    lines.append('')
+    lines.append('%d/%d cleared, %d total deaths' % (cleared, len(results), total_deaths))
+    lines.append('tap or press a key to exit')
+
+    y = 30
+    i = 0
+    while i < len(lines):
+        f = font if i == 0 else small
+        surf = f.render(lines[i], True, (240, 240, 240))
+        screen.blit(surf, (30, y))
+        y += 30 if i == 0 else 26
+        i += 1
+    pygame.display.flip()
+
+def wait_for_dismiss(timeout_s=30.0):
+    t0 = time.time()
+    while time.time() - t0 < timeout_s:
+        for e in pygame.event.get():
+            if e.type in (pygame.QUIT, pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
+                return
+        time.sleep(0.1)
+
+def main_pack(level_paths, timeout_s=60.0):
+    pygame.init()
+    pygame.mouse.set_visible(False)
+    screen = pygame.display.set_mode((W, H), pygame.FULLSCREEN, 16)
+
+    results = []
+    i = 0
+    try:
+        while i < len(level_paths):
+            level_path = level_paths[i]
+            lvl_probe = level.load(level_path)
+            telemetry_path = default_telemetry_path(level_path, lvl_probe)
+            result = play_level(screen, level_path, ACCEL, telemetry_path, timeout_s)
+            results.append(result)
+            sys.stdout.write('RESULT level=%s outcome=%s elapsed=%.1f deaths=%d par=%g\n' % (
+                level_path, result['outcome'], result['elapsed'], result['deaths'], result['par']))
+            sys.stdout.flush()
+            if result['outcome'] == 'quit':
+                break
+            i += 1
+
+        draw_pack_summary(screen, results)
+        wait_for_dismiss()
+    finally:
+        pygame.quit()
+    return 0
+
+def main():
+    if len(sys.argv) < 2:
+        sys.stderr.write(
+            'usage: python2.5 game.py <level.lvl> [tilt_source] [telemetry_csv] [timeout_s] [state_file]\n'
+            '       python2.5 game.py --pack <level.lvl> [level.lvl ...] [timeout_s]\n')
+        return 2
+
+    if sys.argv[1] == '--pack':
+        pack_args = sys.argv[2:]
+        if not pack_args:
+            sys.stderr.write('--pack needs at least one level file\n')
+            return 2
+        timeout_s = 60.0
+        last = pack_args[-1]
+        if last.replace('.', '', 1).isdigit():
+            timeout_s = float(last)
+            pack_args = pack_args[:-1]
+        if not pack_args:
+            sys.stderr.write('--pack needs at least one level file\n')
+            return 2
+        return main_pack(pack_args, timeout_s)
+
+    level_path = sys.argv[1]
+    if len(sys.argv) > 2:
+        tilt_path = sys.argv[2]
+    else:
+        tilt_path = ACCEL
+    if len(sys.argv) > 4:
+        timeout_s = float(sys.argv[4])
+    else:
+        timeout_s = 60.0
+    state_path = sys.argv[5] if len(sys.argv) > 5 else None
+
+    lvl_probe = level.load(level_path)
+    telemetry_path = sys.argv[3] if len(sys.argv) > 3 else default_telemetry_path(level_path, lvl_probe)
+
+    pygame.init()
+    pygame.mouse.set_visible(False)
+    screen = pygame.display.set_mode((W, H), pygame.FULLSCREEN, 16)
+    result = play_level(screen, level_path, tilt_path, telemetry_path, timeout_s, state_path)
+    pygame.quit()
+
+    if result['outcome'] == 'invalid':
+        return 2
+    sys.stdout.write('RESULT outcome=%s elapsed=%.1f deaths=%d par=%g frames=%d avg_fps=%.1f\n' % (
+        result['outcome'], result['elapsed'], result['deaths'], result['par'],
+        result['frames'], result['avg_fps']))
+    sys.stdout.flush()
+    if result['outcome'] == 'goal':
+        return 0
+    if result['outcome'] == 'quit':
+        return 1
+    if result['outcome'] == 'timeout':
+        return 3
+    return 1
+
 if __name__ == '__main__':
     sys.exit(main())
+
