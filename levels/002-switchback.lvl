@@ -1,0 +1,13 @@
+# Switchback - an S-shaped descent with two holes in the middle band
+NAME Switchback
+PAR 25
+START 100 100
+GOAL 700 400 20
+WALL 0 0 800 40
+WALL 0 440 800 40
+WALL 0 0 40 480
+WALL 760 0 40 480
+WALL 40 160 656 40
+WALL 104 300 656 40
+HOLE 300 250 20
+HOLE 520 250 20

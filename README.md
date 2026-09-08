@@ -51,7 +51,9 @@ device-side launcher installation:
 ssh root@<n900-ip> 'sh /home/user/MyDocs/fremarble/desktop/install.sh'
 ```
 
-`fremarble` will then appear under **Games** in the Hildon app grid and launch level 001.
+`fremarble` will then appear under **Games** in the Hildon app grid and plays the whole level
+pack — the launcher passes no arguments, and `game.py` with no argument plays every `.lvl` in
+`levels/` in order.
 The launcher writes output to `/home/user/MyDocs/fremarble/fremarble.log`. To run it
 directly instead:
 
@@ -59,14 +61,20 @@ directly instead:
 ssh root@<n900-ip>
 cd /home/user/MyDocs/fremarble
 export DISPLAY=:0
-python2.5 test_level.py                      # PASS: levels/001-first-tilt.lvl (First Tilt)
-python2.5 game.py levels/001-first-tilt.lvl  # real accelerometer, 60 s limit
+python2.5 test_level.py                       # PASS each level, then ALL PASS
+python2.5 game.py                             # play the whole pack (same as the launcher)
+python2.5 game.py levels/001-first-tilt.lvl   # play just one level
 ```
 
-`game.py <level> [tilt_source] [telemetry_csv] [timeout_s]`. Hold the device the way you
-want to play for the first half-second: that angle becomes "level". Reach the goal ring,
-run out of time, or touch the screen to end. The last line printed is always
-`RESULT outcome=... elapsed=... deaths=... par=... frames=... avg_fps=...`.
+`game.py [level.lvl|levels_dir] [tilt_source] [telemetry_csv] [timeout_s]`. With no level
+argument it plays the `levels/` pack next to `game.py`; a directory plays every `.lvl` in it in
+filename order, a single file plays only that level (how the bot and per-level telemetry probes
+stay scoped). Hold the device the way you want to play for the first half-second: that angle
+becomes "level" and holds for the whole pack (no recalibrating between levels). Reach the goal
+ring and play advances to the next level; clear the last and the pack is complete. Run out of
+time (`timeout_s`, default 60, is per level) or touch the screen to end. A `RESULT` line prints
+per level, then a final `RESULT outcome=complete|quit|timeout levels_cleared=... levels=...`
+summary; exit code 0 complete, 1 quit, 3 timeout.
 
 ### Playing it with a bot
 
@@ -90,9 +98,10 @@ Taking the grab drops play to about 8 fps while it runs, so grab between levels.
 
 | Path | What | Written by |
 |---|---|---|
-| `game.py` | game loop, physics, haptics | GPT-5.4 mini |
-| `level.py`, `test_level.py`, `levels/FORMAT.md` | `.lvl` format, loader, validator | Claude Sonnet 5 |
+| `game.py` | game loop, physics, haptics; multi-level pack loop | GPT-5.4 mini; multi-level by Claude Opus 4.8 |
+| `level.py`, `test_level.py`, `levels/FORMAT.md` | `.lvl` format, loader, validator, pack discovery | Claude Sonnet 5; pack discovery by Claude Opus 4.8 |
 | `levels/001-first-tilt.lvl` | the first level | Claude Sonnet 5 |
+| `levels/002-switchback.lvl` | the second level (S-shaped descent, two holes) | Claude Opus 4.8 |
 | `telemetry.py` | 10 Hz CSV writer | GPT-5.4 mini |
 | `bot_tilt.py` | scripted tilt writer | GPT-5.4 mini |
 | `tools/marble_fps.py` | the frame-rate test that decided Python was fast enough | Claude Fable 5.1 |
@@ -113,6 +122,12 @@ Taking the grab drops play to about 8 fps while it runs, so grab between levels.
   marble should have gone and did not. The mapping is fixed; the feel with correct axes is untested
   by a hand. Run `python2.5 tools/tilt_axes.py` over SSH and tilt: it must say RIGHT when the right
   edge goes down and DOWN when the bottom edge does.
+- **Two levels now, and the goal advances to the next.** `python2.5 game.py` (or `levels/`)
+  plays the pack: reach the goal and the next level loads — one calibration for the whole pack,
+  a short freeze between boards — and clearing the last shows a brief *Pack complete* screen,
+  then the game exits. A single `.lvl` path still
+  plays just that one level. `002-switchback.lvl` has not been played by a hand or the bot yet;
+  the bot script below is still tuned for 001.
 - **Physics were tuned once**, from telemetry, not from a hand on the device: 1.2 px/s² per
   milli-g, 0.8/s drag, 900 px/s cap, 0.3 wall restitution, 40 mg soft dead zone (subtracted, not
   stepped), 3-sample smoothing. All constants are at the top of `game.py`.
